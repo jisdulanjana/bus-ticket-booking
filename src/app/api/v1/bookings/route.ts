@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 const HOLD_MINUTES = 10;
+const MIN_HOURS_BEFORE_DEPARTURE = 12;
 
 export async function POST(req: Request) {
   const { allowed } = rateLimit(`bookings:${clientIp(req)}`, 10);
@@ -34,12 +35,25 @@ export async function POST(req: Request) {
 
   const { data: trip, error: tripError } = await supabase
     .from("trips")
-    .select("id, price_cents, status")
+    .select("id, price_cents, status, depart_at")
     .eq("id", trip_id)
     .single();
 
   if (tripError || !trip || trip.status !== "open") {
     return NextResponse.json({ error: { code: "trip_not_available", message: "Trip not found or closed" } }, { status: 404 });
+  }
+
+  const hoursUntilDeparture = (new Date(trip.depart_at).getTime() - Date.now()) / (60 * 60 * 1000);
+  if (hoursUntilDeparture < MIN_HOURS_BEFORE_DEPARTURE) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "booking_window_closed",
+          message: `Bookings close ${MIN_HOURS_BEFORE_DEPARTURE} hours before departure`,
+        },
+      },
+      { status: 409 }
+    );
   }
 
   const amountCents = trip.price_cents * seats.length;

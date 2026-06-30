@@ -5,6 +5,8 @@ import SeatPicker from "./SeatPicker";
 
 export const dynamic = "force-dynamic";
 
+const MIN_HOURS_BEFORE_DEPARTURE = 12;
+
 async function getTripAndSeats(id: string) {
   const supabase = supabaseAdmin();
 
@@ -44,6 +46,9 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
   if (!result) notFound();
   const { trip, seats } = result;
 
+  const hoursUntilDeparture = (new Date(trip.depart_at).getTime() - Date.now()) / (60 * 60 * 1000);
+  const bookable = hoursUntilDeparture >= MIN_HOURS_BEFORE_DEPARTURE;
+
   return (
     <main className="flex flex-1 flex-col items-center bg-zinc-50 px-4 py-12 dark:bg-black">
       <div className="w-full max-w-3xl">
@@ -53,7 +58,13 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
         <p className="mb-8 text-sm text-zinc-500">
           {trip.buses.name} · {new Date(trip.depart_at).toLocaleString("en-LK")} · {formatLkr(trip.price_cents)} per seat
         </p>
-        <SeatPicker tripId={trip.id} priceCents={trip.price_cents} initialSeats={seats} />
+        {bookable ? (
+          <SeatPicker tripId={trip.id} priceCents={trip.price_cents} initialSeats={seats} />
+        ) : (
+          <p className="text-sm text-red-600">
+            Booking for this trip has closed — seats can only be booked at least {MIN_HOURS_BEFORE_DEPARTURE} hours before departure.
+          </p>
+        )}
       </div>
     </main>
   );
