@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { verifyPayhereNotify } from "@/lib/payhere";
+import { sendTicketEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   const form = await req.formData();
@@ -19,7 +20,9 @@ export async function POST(req: Request) {
 
   const { data: booking } = await supabase
     .from("bookings")
-    .select("id, amount_cents, status")
+    .select(
+      "id, amount_cents, status, customer_name, email, booking_seats(seat_no), trips(origin, destination, depart_at)"
+    )
     .eq("payhere_order_id", params.order_id)
     .single();
 
@@ -41,6 +44,20 @@ export async function POST(req: Request) {
 
   if (isValid && amountMatches && booking.status !== "paid") {
     await supabase.from("bookings").update({ status: "paid" }).eq("id", booking.id);
+
+    const trip = booking.trips as unknown as { origin: string; destination: string; depart_at: string };
+    const seats = (booking.booking_seats as unknown as { seat_no: string }[]).map((s) => s.seat_no);
+
+    await sendTicketEmail({
+      to: booking.email,
+      customerName: booking.customer_name,
+      bookingId: booking.id,
+      seats,
+      origin: trip.origin,
+      destination: trip.destination,
+      departAt: trip.depart_at,
+      amountCents: booking.amount_cents,
+    }).catch((err) => console.error("ticket email failed", err));
   }
 
   return new NextResponse("ok", { status: 200 });
