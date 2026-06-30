@@ -50,20 +50,26 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
   const bookable = hoursUntilDeparture >= MIN_HOURS_BEFORE_DEPARTURE;
 
   return (
-    <main className="flex flex-1 flex-col items-center bg-zinc-50 px-4 py-12 dark:bg-black">
-      <div className="w-full max-w-3xl">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          {trip.origin} → {trip.destination}
-        </h1>
-        <p className="mb-8 text-sm text-zinc-500">
-          {trip.buses.name} · {new Date(trip.depart_at).toLocaleString("en-LK")} · {formatLkr(trip.price_cents)} per seat
-        </p>
+    <main className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
+      <div className="bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 px-4 py-10 text-white">
+        <div className="mx-auto max-w-3xl">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            {trip.origin} <span className="text-emerald-100">→</span> {trip.destination}
+          </h1>
+          <p className="mt-2 text-emerald-50/90">
+            {trip.buses.name} · {new Date(trip.depart_at).toLocaleString("en-LK", { dateStyle: "medium", timeStyle: "short" })} ·{" "}
+            {formatLkr(trip.price_cents)} per seat
+          </p>
+        </div>
+      </div>
+
+      <div className="mx-auto w-full max-w-3xl px-4 py-8">
         {bookable ? (
           <SeatPicker tripId={trip.id} priceCents={trip.price_cents} initialSeats={seats} />
         ) : (
-          <p className="text-sm text-red-600">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
             Booking for this trip has closed — seats can only be booked at least {MIN_HOURS_BEFORE_DEPARTURE} hours before departure.
-          </p>
+          </div>
         )}
       </div>
     </main>
