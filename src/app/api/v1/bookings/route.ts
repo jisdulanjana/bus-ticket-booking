@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 const HOLD_MINUTES = 10;
 
 export async function POST(req: Request) {
+  const { allowed } = rateLimit(`bookings:${clientIp(req)}`, 10);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: { code: "rate_limited", message: "Too many requests, please try again shortly" } },
+      { status: 429 }
+    );
+  }
+
   const body = await req.json();
   const { trip_id, seats, customer_name, email, phone, user_id } = body as {
     trip_id: string;

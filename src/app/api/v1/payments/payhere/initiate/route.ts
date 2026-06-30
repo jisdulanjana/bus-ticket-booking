@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { payhereSignature } from "@/lib/payhere";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 const CURRENCY = "LKR";
 
 export async function POST(req: Request) {
+  const { allowed } = rateLimit(`payhere-initiate:${clientIp(req)}`, 20);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: { code: "rate_limited", message: "Too many requests, please try again shortly" } },
+      { status: 429 }
+    );
+  }
+
   const { booking_id } = (await req.json()) as { booking_id: string };
 
   if (!booking_id) {
